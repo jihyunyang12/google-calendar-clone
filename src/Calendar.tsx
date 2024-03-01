@@ -8,6 +8,8 @@ import {
   startOfWeek,
   endOfWeek,
   isSameMonth,
+  isSameWeek,
+  isToday,
 } from "date-fns";
 
 export function Calendar() {
@@ -48,18 +50,37 @@ export function Calendar() {
       </div>
       <div className="days">
         {visibleDates.map((date) => (
-          <div
-            className={`day ${
-              !isSameMonth(date, visibleMonth) ? "non-month-day" : ""
-            } ${!isSameMonth(date, visibleMonth) ? "old-month-day" : ""}`}
-          >
-            <div className="day-header">
-              <div className="week-name">{format(date, "EEE")}</div>
-              <div className="day-number">{format(date, "d")}</div>
-              <button className="add-event-btn">+</button>
-            </div>
-          </div>
+          <CalendarDay
+            date={date}
+            visibleMonth={visibleMonth}
+            key={date.getTime()}
+          />
         ))}
+      </div>
+    </div>
+  );
+}
+
+type CalendarDaysProps = {
+  date: Date;
+  visibleMonth: Date;
+};
+
+function CalendarDay({ date, visibleMonth }: CalendarDaysProps) {
+  return (
+    <div
+      className={`day ${
+        !isSameMonth(date, visibleMonth) ? "non-month-day" : ""
+      } ${!isSameMonth(date, visibleMonth) ? "old-month-day" : ""}`}
+    >
+      <div className="day-header">
+        {isSameWeek(date, startOfMonth(visibleMonth)) && (
+          <div className="week-name">{format(date, "EEE")}</div>
+        )}
+        <div className={`day-number ${isToday(date) ? "today" : ""}`}>
+          {format(date, "d")}
+        </div>
+        <button className="add-event-btn">+</button>
       </div>
     </div>
   );
