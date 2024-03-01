@@ -11,9 +11,11 @@ import {
   isSameWeek,
   isToday,
 } from "date-fns";
+import { Modal } from "./components/Modal";
 
 export function Calendar() {
   const [visibleMonth, setVisibleMonth] = useState(new Date());
+  const [addEventModalOpen, setAddEventModalOpen] = useState(false);
 
   const visibleDates = eachDayOfInterval({
     start: startOfWeek(startOfMonth(visibleMonth)),
@@ -33,40 +35,51 @@ export function Calendar() {
   }
 
   return (
-    <div className="calendar">
-      <div className="header">
-        <button className="btn" onClick={showToday}>
-          Today
-        </button>
-        <div>
-          <button className="month-change-btn" onClick={showPreviousMonth}>
-            &lt;
+    <>
+      <div className="calendar">
+        <div className="header">
+          <button className="btn" onClick={showToday}>
+            Today
           </button>
-          <button className="month-change-btn" onClick={showNextMonth}>
-            &gt;
-          </button>
+          <div>
+            <button className="month-change-btn" onClick={showPreviousMonth}>
+              &lt;
+            </button>
+            <button className="month-change-btn" onClick={showNextMonth}>
+              &gt;
+            </button>
+          </div>
+          <span className="month-title">{format(visibleMonth, "MMMM y")}</span>
         </div>
-        <span className="month-title">{format(visibleMonth, "MMMM y")}</span>
+        <div className="days">
+          {visibleDates.map((date) => (
+            <CalendarDay
+              date={date}
+              visibleMonth={visibleMonth}
+              key={date.getTime()}
+              setAddEventModalOpen={setAddEventModalOpen}
+            />
+          ))}
+        </div>
       </div>
-      <div className="days">
-        {visibleDates.map((date) => (
-          <CalendarDay
-            date={date}
-            visibleMonth={visibleMonth}
-            key={date.getTime()}
-          />
-        ))}
-      </div>
-    </div>
+      {addEventModalOpen && (
+        <AddEventModal setAddEventModalOpen={setAddEventModalOpen} />
+      )}
+    </>
   );
 }
 
 type CalendarDaysProps = {
   date: Date;
   visibleMonth: Date;
+  setAddEventModalOpen: any;
 };
 
-function CalendarDay({ date, visibleMonth }: CalendarDaysProps) {
+function CalendarDay({
+  date,
+  visibleMonth,
+  setAddEventModalOpen,
+}: CalendarDaysProps) {
   return (
     <div
       className={`day ${
@@ -80,8 +93,34 @@ function CalendarDay({ date, visibleMonth }: CalendarDaysProps) {
         <div className={`day-number ${isToday(date) ? "today" : ""}`}>
           {format(date, "d")}
         </div>
-        <button className="add-event-btn">+</button>
+        <button
+          className="add-event-btn"
+          onClick={() => setAddEventModalOpen(true)}
+        >
+          +
+        </button>
       </div>
     </div>
+  );
+}
+
+function AddEventModal({
+  setAddEventModalOpen,
+}: {
+  setAddEventModalOpen: any;
+}) {
+  return (
+    <Modal>
+      <div className="modal-title">
+        <div>Add Event</div>
+        <small>6/8/23</small>
+        <button
+          className="close-btn"
+          onClick={() => setAddEventModalOpen(false)}
+        >
+          &times;
+        </button>
+      </div>
+    </Modal>
   );
 }
