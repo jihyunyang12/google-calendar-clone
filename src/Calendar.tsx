@@ -10,14 +10,17 @@ import {
   isSameMonth,
   isSameWeek,
   isToday,
+  isSameDay,
 } from "date-fns";
 import { Modal } from "./components/Modal";
 import { Colors } from "./consts/Color";
+import { IEvent } from "./models/Event";
 
 export function Calendar() {
   const [visibleMonth, setVisibleMonth] = useState(new Date());
   const [addEventModalOpen, setAddEventModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [events, setEvents] = useState<IEvent[]>([]);
 
   const visibleDates = eachDayOfInterval({
     start: startOfWeek(startOfMonth(visibleMonth)),
@@ -61,6 +64,7 @@ export function Calendar() {
               key={date.getTime()}
               setAddEventModalOpen={setAddEventModalOpen}
               setSelectedDate={setSelectedDate}
+              events={events.filter((event) => isSameDay(event.date, date))}
             />
           ))}
         </div>
@@ -69,6 +73,7 @@ export function Calendar() {
         <AddEventModal
           setAddEventModalOpen={setAddEventModalOpen}
           selectedDate={selectedDate}
+          setEvents={setEvents}
         />
       )}
     </>
@@ -77,6 +82,7 @@ export function Calendar() {
 
 type CalendarDaysProps = {
   date: Date;
+  events: IEvent[];
   visibleMonth: Date;
   setAddEventModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedDate: React.Dispatch<React.SetStateAction<Date>>;
@@ -85,6 +91,7 @@ type CalendarDaysProps = {
 function CalendarDay({
   date,
   visibleMonth,
+  events,
   setAddEventModalOpen,
   setSelectedDate,
 }: CalendarDaysProps) {
@@ -110,6 +117,18 @@ function CalendarDay({
         >
           +
         </button>
+        <div className="events">
+          {events.map((event) => (
+            <button
+              className={`${event.isAllDay ? "all-day-event" : ""} ${
+                event.color
+              } event`}
+              key={`${event.date.toString()}-${event.name.toString()}`}
+            >
+              <div className="event-name">{event.name}</div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -118,13 +137,15 @@ function CalendarDay({
 type AddEventModalProps = {
   setAddEventModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   selectedDate: Date;
+  setEvents: React.Dispatch<React.SetStateAction<IEvent[]>>;
 };
 
 function AddEventModal({
   setAddEventModalOpen,
   selectedDate,
+  setEvents,
 }: AddEventModalProps) {
-  const name = useRef(null);
+  const name = useRef<HTMLInputElement>(null);
   const [isAllDay, setIsAllDay] = useState(false);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -147,6 +168,14 @@ function AddEventModal({
   function submitForm(e: FormEvent) {
     e.preventDefault();
     console.log(selectedColor, isAllDay, startTime, endTime);
+
+    const newEvent: IEvent = {
+      name: name.current!.value,
+      date: selectedDate,
+      isAllDay,
+      color: selectedColor,
+    };
+    setEvents((currentEvents) => [...currentEvents, newEvent]);
   }
 
   function colorHandler(e: HTMLInputElement) {
@@ -168,7 +197,7 @@ function AddEventModal({
       <form onSubmit={submitForm}>
         <div className="form-group">
           <label htmlFor="name">Name</label>
-          <input type="text" name="name" id="name" ref={name} />
+          <input type="text" name="name" id="name" ref={name} required />
         </div>
         <div className="form-group checkbox">
           <input
