@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { FormEvent, Fragment, useRef, useState } from "react";
 import {
   format,
   addMonths,
@@ -12,10 +12,12 @@ import {
   isToday,
 } from "date-fns";
 import { Modal } from "./components/Modal";
+import { Colors } from "./consts/Color";
 
 export function Calendar() {
   const [visibleMonth, setVisibleMonth] = useState(new Date());
   const [addEventModalOpen, setAddEventModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   const visibleDates = eachDayOfInterval({
     start: startOfWeek(startOfMonth(visibleMonth)),
@@ -58,12 +60,16 @@ export function Calendar() {
               visibleMonth={visibleMonth}
               key={date.getTime()}
               setAddEventModalOpen={setAddEventModalOpen}
+              setSelectedDate={setSelectedDate}
             />
           ))}
         </div>
       </div>
       {addEventModalOpen && (
-        <AddEventModal setAddEventModalOpen={setAddEventModalOpen} />
+        <AddEventModal
+          setAddEventModalOpen={setAddEventModalOpen}
+          selectedDate={selectedDate}
+        />
       )}
     </>
   );
@@ -72,13 +78,15 @@ export function Calendar() {
 type CalendarDaysProps = {
   date: Date;
   visibleMonth: Date;
-  setAddEventModalOpen: any;
+  setAddEventModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setSelectedDate: React.Dispatch<React.SetStateAction<Date>>;
 };
 
 function CalendarDay({
   date,
   visibleMonth,
   setAddEventModalOpen,
+  setSelectedDate,
 }: CalendarDaysProps) {
   return (
     <div
@@ -95,7 +103,10 @@ function CalendarDay({
         </div>
         <button
           className="add-event-btn"
-          onClick={() => setAddEventModalOpen(true)}
+          onClick={() => {
+            setAddEventModalOpen(true);
+            setSelectedDate(date);
+          }}
         >
           +
         </button>
@@ -104,16 +115,49 @@ function CalendarDay({
   );
 }
 
+type AddEventModalProps = {
+  setAddEventModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedDate: Date;
+};
+
 function AddEventModal({
   setAddEventModalOpen,
-}: {
-  setAddEventModalOpen: any;
-}) {
+  selectedDate,
+}: AddEventModalProps) {
+  const name = useRef(null);
+  const [isAllDay, setIsAllDay] = useState(false);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [selectedColor, setSelectedColor] = useState(Colors[0]);
+
+  function allDayHandler(e: HTMLInputElement) {
+    setIsAllDay(e.checked);
+    setStartTime("");
+    setEndTime("");
+  }
+
+  function startTimeHandler(e: HTMLInputElement) {
+    setStartTime(e.value);
+  }
+
+  function endTimeHandler(e: HTMLInputElement) {
+    setEndTime(e.value);
+  }
+
+  function submitForm(e: FormEvent) {
+    e.preventDefault();
+    console.log(selectedColor, isAllDay, startTime, endTime);
+  }
+
+  function colorHandler(e: HTMLInputElement) {
+    setSelectedColor(e.value);
+  }
+
   return (
     <Modal>
       <div className="modal-title">
         <div>Add Event</div>
-        <small>6/8/23</small>
+        <small>{format(selectedDate, "MM/dd/yy")}</small>
         <button
           className="close-btn"
           onClick={() => setAddEventModalOpen(false)}
@@ -121,6 +165,77 @@ function AddEventModal({
           &times;
         </button>
       </div>
+      <form onSubmit={submitForm}>
+        <div className="form-group">
+          <label htmlFor="name">Name</label>
+          <input type="text" name="name" id="name" ref={name} />
+        </div>
+        <div className="form-group checkbox">
+          <input
+            type="checkbox"
+            name="all-day"
+            id="all-day"
+            checked={isAllDay}
+            onChange={(e) => allDayHandler(e.target as HTMLInputElement)}
+          />
+          <label htmlFor="all-day">All Day?</label>
+        </div>
+        <div className="row">
+          <div className="form-group">
+            <label htmlFor="start-time">Start Time</label>
+            <input
+              type="time"
+              name="start-time"
+              id="start-time"
+              value={startTime}
+              onChange={(e) => startTimeHandler(e.target as HTMLInputElement)}
+              disabled={isAllDay}
+              required={!isAllDay}
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="end-time">End Time</label>
+            <input
+              type="time"
+              name="end-time"
+              id="end-time"
+              value={endTime}
+              onChange={(e) => endTimeHandler(e.target as HTMLInputElement)}
+              disabled={isAllDay}
+              required={!isAllDay}
+            />
+          </div>
+        </div>
+        <div className="form-group">
+          <label>Color</label>
+          <div className="row left">
+            {Colors.map((color) => (
+              <Fragment key={color}>
+                <input
+                  type="radio"
+                  name="color"
+                  value={color}
+                  id={color}
+                  checked={color === selectedColor}
+                  className="color-radio"
+                  onChange={(e) => colorHandler(e.target as HTMLInputElement)}
+                />
+                <label htmlFor={color}>
+                  <span className="sr-only">{color}</span>
+                </label>
+              </Fragment>
+            ))}
+          </div>
+        </div>
+        <div className="row">
+          <button className="btn btn-success" type="submit">
+            Add
+          </button>
+          <button className="btn btn-delete" type="button">
+            Delete
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }
