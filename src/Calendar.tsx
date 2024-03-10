@@ -1,4 +1,4 @@
-import { FormEvent, Fragment, useRef, useState } from "react";
+import { FormEvent, Fragment, useMemo, useRef, useState } from "react";
 import {
   format,
   addMonths,
@@ -11,10 +11,12 @@ import {
   isSameWeek,
   isToday,
   isSameDay,
+  isBefore,
 } from "date-fns";
 import { Modal } from "./components/Modal";
 import { Colors } from "./consts/Color";
 import { IEvent } from "./models/Event";
+import { cc } from "./utils/cc";
 
 export function Calendar() {
   const [visibleMonth, setVisibleMonth] = useState(new Date());
@@ -22,10 +24,14 @@ export function Calendar() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState<IEvent[]>([]);
 
-  const visibleDates = eachDayOfInterval({
-    start: startOfWeek(startOfMonth(visibleMonth)),
-    end: endOfWeek(endOfMonth(visibleMonth)),
-  });
+  const visibleDates = useMemo(
+    () =>
+      eachDayOfInterval({
+        start: startOfWeek(startOfMonth(visibleMonth)),
+        end: endOfWeek(endOfMonth(visibleMonth)),
+      }),
+    []
+  );
 
   function showPreviousMonth() {
     setVisibleMonth((currentMonth) => addMonths(currentMonth, -1));
@@ -97,15 +103,17 @@ function CalendarDay({
 }: CalendarDaysProps) {
   return (
     <div
-      className={`day ${
-        !isSameMonth(date, visibleMonth) ? "non-month-day" : ""
-      } ${!isSameMonth(date, visibleMonth) ? "old-month-day" : ""}`}
+      className={cc(
+        "day",
+        !isSameMonth(date, visibleMonth) && "non-month-day",
+        isBefore(date, new Date()) && "old-month-day"
+      )}
     >
       <div className="day-header">
         {isSameWeek(date, startOfMonth(visibleMonth)) && (
           <div className="week-name">{format(date, "EEE")}</div>
         )}
-        <div className={`day-number ${isToday(date) ? "today" : ""}`}>
+        <div className={cc("day-number", isToday(date) && "today")}>
           {format(date, "d")}
         </div>
         <button
