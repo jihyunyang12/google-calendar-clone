@@ -1,13 +1,17 @@
 import { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-type ModalProps = {
+export type ModalProps = {
   children: ReactNode;
+  isOpen: boolean;
+  onClose: () => void;
 };
-export function Modal({ children }: ModalProps) {
+export function Modal({ children, isOpen, onClose }: ModalProps) {
+  if (!isOpen) return null;
+
   return createPortal(
     <div className="modal">
-      <div className="overlay"></div>
+      <div className="overlay" onClick={onClose}></div>
       <div className="modal-body">{children}</div>
     </div>,
     document.querySelector("#modal-container") as HTMLElement

@@ -12,17 +12,19 @@ import {
   isToday,
   isSameDay,
   isBefore,
+  addDays,
 } from "date-fns";
-import { Modal } from "./components/Modal";
-import { Colors } from "./consts/Color";
-import { IEvent } from "./models/Event";
+import { Modal, ModalProps } from "./components/Modal";
 import { cc } from "./utils/cc";
+import { EVENTS_COLORS, useEvents } from "./context/useEvent";
+import { Event } from "./context/Events";
+import { UnionOmit } from "./utils/types";
 
 export function Calendar() {
   const [visibleMonth, setVisibleMonth] = useState(new Date());
   const [addEventModalOpen, setAddEventModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [events, setEvents] = useState<IEvent[]>([]);
+  const { events, addEvent } = useEvents();
 
   const visibleDates = useMemo(
     () =>
@@ -76,10 +78,11 @@ export function Calendar() {
         </div>
       </div>
       {addEventModalOpen && (
-        <AddEventModal
-          setAddEventModalOpen={setAddEventModalOpen}
-          selectedDate={selectedDate}
-          setEvents={setEvents}
+        <EventFormModal
+          onSubmit={addEvent}
+          date={selectedDate}
+          isOpen={addEventModalOpen}
+          onClose={() => setAddEventModalOpen(false)}
         />
       )}
     </>
@@ -88,8 +91,8 @@ export function Calendar() {
 
 type CalendarDaysProps = {
   date: Date;
-  events: IEvent[];
   visibleMonth: Date;
+  events: Event[];
   setAddEventModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedDate: React.Dispatch<React.SetStateAction<Date>>;
 };
@@ -106,7 +109,7 @@ function CalendarDay({
       className={cc(
         "day",
         !isSameMonth(date, visibleMonth) && "non-month-day",
-        isBefore(date, new Date()) && "old-month-day"
+        isBefore(date, addDays(new Date(), -1)) && "old-month-day"
       )}
     >
       <div className="day-header">
@@ -128,9 +131,11 @@ function CalendarDay({
         <div className="events">
           {events.map((event) => (
             <button
-              className={`${event.isAllDay ? "all-day-event" : ""} ${
-                event.color
-              } event`}
+              className={cc(
+                "event",
+                event.color,
+                event.isAllDay && "all-day-event"
+              )}
               key={`${event.date.toString()}-${event.name.toString()}`}
             >
               <div className="event-name">{event.name}</div>
@@ -142,63 +147,70 @@ function CalendarDay({
   );
 }
 
-type AddEventModalProps = {
-  setAddEventModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  selectedDate: Date;
-  setEvents: React.Dispatch<React.SetStateAction<IEvent[]>>;
-};
+type EventFormModalProps = {
+  onSubmit: (event: UnionOmit<Event, "id">) => void;
+} & (
+  | { onDelete: () => void; event: Event; date?: never }
+  | { onDelete?: never; event?: never; date: Date }
+) &
+  Omit<ModalProps, "children">;
 
-function AddEventModal({
-  setAddEventModalOpen,
-  selectedDate,
-  setEvents,
-}: AddEventModalProps) {
+function EventFormModal({
+  onSubmit,
+  onDelete,
+  event,
+  date,
+  ...modalProps
+}: EventFormModalProps) {
   const name = useRef<HTMLInputElement>(null);
   const [isAllDay, setIsAllDay] = useState(false);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [selectedColor, setSelectedColor] = useState(Colors[0]);
+  const [selectedColor, setSelectedColor] = useState(
+    event?.color || EVENTS_COLORS[0]
+  );
 
-  function allDayHandler(e: HTMLInputElement) {
-    setIsAllDay(e.checked);
+  function allDayHandler(checked: boolean) {
+    setIsAllDay(checked);
     setStartTime("");
     setEndTime("");
   }
 
-  function startTimeHandler(e: HTMLInputElement) {
-    setStartTime(e.value);
-  }
-
-  function endTimeHandler(e: HTMLInputElement) {
-    setEndTime(e.value);
-  }
-
   function submitForm(e: FormEvent) {
     e.preventDefault();
-    console.log(selectedColor, isAllDay, startTime, endTime);
 
-    const newEvent: IEvent = {
-      name: name.current!.value,
-      date: selectedDate,
-      isAllDay,
-      color: selectedColor,
-    };
-    setEvents((currentEvents) => [...currentEvents, newEvent]);
-  }
+    let newEvent: UnionOmit<Event, "id">;
 
-  function colorHandler(e: HTMLInputElement) {
-    setSelectedColor(e.value);
+    if (isAllDay) {
+      newEvent = {
+        name: name.current!.value,
+        date: date || event?.date,
+        color: selectedColor,
+        isAllDay: true,
+      };
+    } else {
+      if (!startTime || !endTime) {
+        return;
+      }
+      newEvent = {
+        name: name.current!.value,
+        date: date || event?.date,
+        color: selectedColor,
+        isAllDay: false,
+        startTime,
+        endTime,
+      };
+    }
+    onSubmit(newEvent);
+    modalProps.onClose();
   }
 
   return (
-    <Modal>
+    <Modal {...modalProps}>
       <div className="modal-title">
-        <div>Add Event</div>
-        <small>{format(selectedDate, "MM/dd/yy")}</small>
-        <button
-          className="close-btn"
-          onClick={() => setAddEventModalOpen(false)}
-        >
+        <div>{event ? "Add Event" : "Edit Event"}</div>
+        <small>{format(date || event.date, "MM/dd/yy")}</small>
+        <button className="close-btn" onClick={modalProps.onClose}>
           &times;
         </button>
       </div>
@@ -213,7 +225,7 @@ function AddEventModal({
             name="all-day"
             id="all-day"
             checked={isAllDay}
-            onChange={(e) => allDayHandler(e.target as HTMLInputElement)}
+            onChange={(e) => allDayHandler(e.target.checked)}
           />
           <label htmlFor="all-day">All Day?</label>
         </div>
@@ -225,7 +237,7 @@ function AddEventModal({
               name="start-time"
               id="start-time"
               value={startTime}
-              onChange={(e) => startTimeHandler(e.target as HTMLInputElement)}
+              onChange={(e) => setStartTime(e.target.value)}
               disabled={isAllDay}
               required={!isAllDay}
             />
@@ -237,7 +249,7 @@ function AddEventModal({
               name="end-time"
               id="end-time"
               value={endTime}
-              onChange={(e) => endTimeHandler(e.target as HTMLInputElement)}
+              onChange={(e) => setEndTime(e.target.value)}
               disabled={isAllDay}
               required={!isAllDay}
             />
@@ -246,7 +258,7 @@ function AddEventModal({
         <div className="form-group">
           <label>Color</label>
           <div className="row left">
-            {Colors.map((color) => (
+            {EVENTS_COLORS.map((color) => (
               <Fragment key={color}>
                 <input
                   type="radio"
@@ -255,7 +267,7 @@ function AddEventModal({
                   id={color}
                   checked={color === selectedColor}
                   className="color-radio"
-                  onChange={(e) => colorHandler(e.target as HTMLInputElement)}
+                  onChange={() => setSelectedColor(color)}
                 />
                 <label htmlFor={color}>
                   <span className="sr-only">{color}</span>
