@@ -1,4 +1,13 @@
-import { FormEvent, Fragment, useId, useMemo, useRef, useState } from "react";
+import {
+  FormEvent,
+  Fragment,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   format,
   addMonths,
@@ -192,12 +201,13 @@ function EventFormModal({
   ...modalProps
 }: EventFormModalProps) {
   const name = useRef<HTMLInputElement>(null);
-  const [isAllDay, setIsAllDay] = useState(false);
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  const [isAllDay, setIsAllDay] = useState(event?.isAllDay || false);
+  const [startTime, setStartTime] = useState(event?.startTime || "");
+  const [endTime, setEndTime] = useState(event?.endTime || "");
   const [selectedColor, setSelectedColor] = useState(
     event?.color || EVENTS_COLORS[0]
   );
+
   const formId = useId();
   function allDayHandler(checked: boolean) {
     setIsAllDay(checked);
@@ -252,6 +262,7 @@ function EventFormModal({
             name="name"
             id={`${formId}-name`}
             ref={name}
+            defaultValue={event?.name}
             required
           />
         </div>
